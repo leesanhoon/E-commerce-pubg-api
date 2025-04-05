@@ -1,14 +1,22 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using System.Reflection;
+using FluentValidation;
+using FluentValidation.AspNetCore;
 using E_commerce_pubg_api.Infrastructure.Persistence;
 using E_commerce_pubg_api.Application.Interfaces;
+using E_commerce_pubg_api.Application.Validators;
 using E_commerce_pubg_api.Infrastructure.ExternalServices.Cloudinary;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllers();
+
+// Add FluentValidation
+builder.Services.AddValidatorsFromAssemblyContaining<CreateCategoryDtoValidator>();
+builder.Services.AddScoped<CreateCategoryDtoValidator>();
+builder.Services.AddScoped<UpdateCategoryDtoValidator>();
 
 // Configure PostgreSQL
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -87,7 +95,7 @@ using (var scope = app.Services.CreateScope())
     try
     {
         var context = services.GetRequiredService<ApplicationDbContext>();
-        logger.LogInformation("Starting database migration at {time}", DateTimeOffset.Now);
+        logger.LogInformation("Starting database migration at {Time}", DateTimeOffset.Now);
 
         // Create database if not exists
         context.Database.EnsureCreated();
@@ -97,10 +105,10 @@ using (var scope = app.Services.CreateScope())
         var pendingMigrations = await context.Database.GetPendingMigrationsAsync();
         if (pendingMigrations.Any())
         {
-            logger.LogInformation("Found {count} pending migrations", pendingMigrations.Count());
+            logger.LogInformation("Found {Count} pending migrations", pendingMigrations.Count());
             foreach (var migration in pendingMigrations)
             {
-                logger.LogInformation("Applying migration: {migration}", migration);
+                logger.LogInformation("Applying migration: {Migration}", migration);
             }
             await context.Database.MigrateAsync();
             logger.LogInformation("All migrations applied successfully");

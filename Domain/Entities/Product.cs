@@ -1,3 +1,5 @@
+using Domain.Entities;
+
 namespace E_commerce_pubg_api.Domain.Entities
 {
     public class Product
@@ -7,7 +9,8 @@ namespace E_commerce_pubg_api.Domain.Entities
         public string Description { get; set; }
         public decimal Price { get; set; }
         public int StockQuantity { get; set; }
-        public string Category { get; set; }
+        public int CategoryId { get; set; }
+        public Category Category { get; set; }
         public List<ProductImage> Images { get; set; } = new();
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
