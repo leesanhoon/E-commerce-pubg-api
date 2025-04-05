@@ -1,4 +1,3 @@
-using Domain.Entities;
 
 namespace E_commerce_pubg_api.Domain.Entities
 {
