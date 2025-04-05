@@ -5,6 +5,7 @@ using E_commerce_pubg_api.Domain.Entities;
 using E_commerce_pubg_api.Infrastructure.Persistence;
 using E_commerce_pubg_api.WebApi.Services;
 using E_commerce_pubg_api.WebApi.DTOs;
+using System.Transactions;
 
 namespace E_commerce_pubg_api.WebApi.Controllers
 {
@@ -236,6 +237,95 @@ namespace E_commerce_pubg_api.WebApi.Controllers
                 {
                     Success = false,
                     Message = "An error occurred while fetching the product",
+                    Error = ex.Message
+                });
+            }
+        }
+
+        /// <summary>
+        /// Xóa sản phẩm và tất cả hình ảnh liên quan
+        /// </summary>
+        [HttpDelete("{id}")]
+        [SwaggerOperation(
+            Summary = "Xóa sản phẩm",
+            Description = "Xóa sản phẩm và tất cả hình ảnh liên quan trên Cloudinary",
+            OperationId = "DeleteProduct",
+            Tags = new[] { "Products" }
+        )]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
+        private async Task<IActionResult> DeleteProductInternal(Guid id)
+        {
+            // Get product with images first (outside transaction)
+            var product = await _context.Products
+                .Include(p => p.Images)
+                .FirstOrDefaultAsync(p => p.Id == id);
+
+            if (product == null)
+            {
+                return NotFound(new ErrorResponse
+                {
+                    Success = false,
+                    Message = "Product not found"
+                });
+            }
+
+            // Delete images from Cloudinary (outside transaction)
+            if (product.Images != null && product.Images.Any())
+            {
+                foreach (var image in product.Images)
+                {
+                    try
+                    {
+                        if (!string.IsNullOrEmpty(image.PublicId))
+                        {
+                            await _cloudinaryService.DeleteImageAsync(image.PublicId);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to delete image {PublicId} from Cloudinary", image.PublicId);
+                        // Continue with deletion even if Cloudinary delete fails
+                    }
+                }
+            }
+
+            // Database operations within transaction
+            await _context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+            {
+                await using var transaction = await _context.Database.BeginTransactionAsync();
+                try
+                {
+                    _context.Products.Remove(product);
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            });
+
+            _logger.LogInformation("Product {ProductId} deleted successfully", id);
+            return NoContent();
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteProduct(Guid id)
+        {
+            try
+            {
+                return await DeleteProductInternal(id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while deleting product {ProductId}", id);
+                return StatusCode(500, new ErrorResponse
+                {
+                    Success = false,
+                    Message = "An error occurred while deleting the product",
                     Error = ex.Message
                 });
             }
