@@ -1,118 +1,133 @@
-# E-commerce PUBG API
+# PUBG E-commerce API
 
-## Giới thiệu
-API backend cho hệ thống thương mại điện tử bán các vật phẩm trong game PUBG. Dự án được xây dựng bằng ASP.NET Core theo mô hình Layered Architecture.
+## 📝 Giới thiệu
+API backend cho hệ thống thương mại điện tử chuyên về mua bán các vật phẩm trong game PUBG. Dự án này được xây dựng với mục đích tạo ra một nền tảng an toàn và tiện lợi cho người chơi PUBG có thể trao đổi, mua bán các vật phẩm trong game.
 
-## Cấu trúc thư mục
+## ✨ Tính năng chính
+- 🛍️ Quản lý sản phẩm (vật phẩm game)
+- 🖼️ Upload và quản lý hình ảnh qua Cloudinary CDN
+- 🔐 Xác thực và phân quyền người dùng
+- 💾 Lưu trữ dữ liệu với PostgreSQL
+- 📦 Container hóa với Docker
+- 📚 API Documentation với Swagger UI
+- 🔍 Tìm kiếm và lọc sản phẩm
+- 📊 Logging và monitoring
+
+## 🔧 Công nghệ sử dụng
+- **.NET 9.0**: Framework chính để phát triển API
+- **PostgreSQL**: Hệ quản trị cơ sở dữ liệu
+- **Entity Framework Core**: ORM framework
+- **Cloudinary**: CDN cho lưu trữ và quản lý hình ảnh
+- **Docker**: Container hóa ứng dụng
+- **Swagger/OpenAPI**: API documentation
+- **VS Code**: IDE chính để phát triển
+
+## 📂 Cấu trúc thư mục
 ```
 E-commerce-pubg-api/
-├── Application/            # Chứa business logic
-│   ├── DTOs/              # Data Transfer Objects
-│   ├── Interfaces/        # Interface definitions
-│   ├── Services/          # Implementation của business logic
-│   └── Mappings/          # Auto mapper profiles
-│
-├── Domain/                # Business entities, enums, exceptions
+├── Domain/                # Business entities và logic
 │   ├── Entities/         # Domain models
-│   ├── Enums/            # Enumerations
-│   └── Exceptions/       # Custom exceptions
+│   ├── Enums/           # Enumerations
+│   └── Exceptions/      # Custom exceptions
 │
-├── Infrastructure/        # External concerns
-│   ├── Persistence/      # Database related operations
-│   │   ├── Contexts/     # DbContext
-│   │   ├── Repositories/ # Repository implementations
-│   │   └── Migrations/   # Database migrations
-│   └── ExternalServices/ # Third-party service integrations
+├── Infrastructure/        # Data access và external services
+│   ├── Persistence/     # Database related
+│   │   ├── Contexts/   
+│   │   ├── Repositories/
+│   │   └── Migrations/
+│   └── ExternalServices/ # Third-party integrations
 │
-├── WebApi/               # Presentation layer
-│   ├── Controllers/      # API endpoints
-│   ├── Middlewares/      # Custom middlewares
-│   └── Filters/         # Action filters
+├── WebApi/               # API endpoints và presentation
+│   ├── Controllers/     # API controllers
+│   ├── Services/        # Application services
+│   └── Middleware/      # Custom middleware
 │
-└── Tests/                # Unit tests, integration tests
-    ├── UnitTests/
-    └── IntegrationTests/
+├── .vscode/             # VS Code configuration
+├── docker/              # Docker configuration
+└── tests/               # Unit và integration tests
 ```
 
-## Công nghệ sử dụng
-- ASP.NET Core 9.0
-- Entity Framework Core
-- PostgreSQL
-- AutoMapper
-- FluentValidation
-- JWT Authentication
-- Swagger/OpenAPI
-
-## Kiến trúc
-Dự án được thiết kế theo mô hình Layered Architecture với 4 layer chính:
-
-1. **Presentation Layer (WebApi)**
-   - Xử lý HTTP requests
-   - Routing
-   - Model validation
-   - Authentication/Authorization
-
-2. **Application Layer**
-   - Business logic
-   - Orchestration
-   - Application services
-   - DTOs & mapping
-
-3. **Domain Layer**
-   - Business entities
-   - Domain logic
-   - Business rules
-   - Domain events
-
-4. **Infrastructure Layer**
-   - Database operations
-   - External service integrations
-   - Logging
-   - File system operations
-
-## Cài đặt
+## 🚀 Hướng dẫn cài đặt
 
 ### Yêu cầu hệ thống
-- .NET 7.0 SDK
-- PostgreSQL 14 trở lên
-- Visual Studio/VS Code
+- .NET 9.0 SDK
+- Docker Desktop
+- VS Code với C# extension
+- Tài khoản Cloudinary (cho image storage)
 
 ### Các bước cài đặt
+
 1. Clone repository:
 ```bash
 git clone https://github.com/your-username/E-commerce-pubg-api.git
-```
-
-2. Di chuyển vào thư mục dự án:
-```bash
 cd E-commerce-pubg-api
 ```
 
-3. Restore packages:
-```bash
-dotnet restore
-```
-
-4. Cấu hình connection string trong appsettings.json:
+2. Cấu hình Cloudinary:
+- Cập nhật `appsettings.json` với thông tin Cloudinary của bạn:
 ```json
 {
-  "ConnectionStrings": {
-    "DefaultConnection": "Host=localhost;Port=5432;Database=pubg_ecommerce;Username=your_username;Password=your_password;"
+  "Cloudinary": {
+    "CloudName": "your_cloud_name",
+    "ApiKey": "your_api_key",
+    "ApiSecret": "your_api_secret"
   }
 }
 ```
 
-5. Cập nhật database:
+3. Khởi động ứng dụng:
 ```bash
+docker-compose up
+```
+
+4. Truy cập ứng dụng:
+- API và Swagger UI: http://localhost:5000
+- API Documentation: http://localhost:5000/swagger
+
+## 💻 Phát triển
+
+### Debug với VS Code
+1. Mở project trong VS Code
+2. Chọn Debug Configuration:
+   - `.NET Core Launch (web)`: Debug local
+   - `Docker .NET Core Launch`: Debug với Docker
+3. Nhấn F5 để bắt đầu debug
+
+### Các lệnh hữu ích
+```bash
+# Chạy migration
 dotnet ef database update
+
+# Build project
+dotnet build
+
+# Run tests
+dotnet test
+
+# Watch mode
+dotnet watch run
 ```
 
-6. Chạy dự án:
-```bash
-dotnet run
-```
+## 👥 Nhóm phát triển
 
-API sẽ chạy tại địa chỉ: `https://localhost:5001`
+### Người phát triển chính
+- **Nguyễn Văn A**
+  - 🌐 Website: [developer.com](https://developer.com)
+  - 📧 Email: developer@example.com
+  - 💼 LinkedIn: [linkedin.com/developer](https://linkedin.com/developer)
 
-## API Documentation
-Swagger UI có sẵn tại: `https://localhost:5001/swagger`
+### Đóng góp
+Mọi đóng góp cho dự án đều được chào đón. Vui lòng:
+1. Fork repository
+2. Tạo branch mới (`git checkout -b feature/AmazingFeature`)
+3. Commit changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to branch (`git push origin feature/AmazingFeature`)
+5. Tạo Pull Request
+
+## 📄 License
+Dự án được phân phối dưới license MIT. Xem `LICENSE` để biết thêm thông tin.
+
+## 📞 Liên hệ
+- Email: support@pubg-ecommerce.com
+- Website: https://pubg-ecommerce.com
+- GitHub: https://github.com/your-username/E-commerce-pubg-api
