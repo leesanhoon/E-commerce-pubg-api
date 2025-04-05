@@ -1,12 +1,14 @@
 using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
 using Microsoft.AspNetCore.Http;
+using E_commerce_pubg_api.WebApi.DTOs;
 
 namespace E_commerce_pubg_api.WebApi.Services
 {
     public interface ICloudinaryService
     {
-        Task<string> UploadImageAsync(IFormFile file);
+        Task<CloudinaryUploadResult> UploadImageAsync(IFormFile file);
+        Task<List<CloudinaryUploadResult>> UploadImagesAsync(List<IFormFile> files);
         Task DeleteImageAsync(string publicId);
     }
 
@@ -14,6 +16,9 @@ namespace E_commerce_pubg_api.WebApi.Services
     {
         private readonly Cloudinary _cloudinary;
         private readonly ILogger<CloudinaryService> _logger;
+        private readonly string[] _allowedImageTypes = { "image/jpeg", "image/jpg", "image/png" };
+        private const int MaxFileSizeInMB = 5;
+        private const int MaxConcurrentUploads = 3;
 
         public CloudinaryService(IConfiguration configuration, ILogger<CloudinaryService> logger)
         {
@@ -30,34 +35,17 @@ namespace E_commerce_pubg_api.WebApi.Services
             _logger = logger;
         }
 
-        public async Task<string> UploadImageAsync(IFormFile file)
+        public async Task<CloudinaryUploadResult> UploadImageAsync(IFormFile file)
         {
             try
             {
-                if (file == null || file.Length == 0)
-                {
-                    throw new ArgumentException("File is empty");
-                }
-
-                // Validate file size (max 5MB)
-                if (file.Length > 5 * 1024 * 1024)
-                {
-                    throw new ArgumentException("File size exceeds 5MB limit");
-                }
-
-                // Validate file type
-                var allowedTypes = new[] { "image/jpeg", "image/jpg", "image/png", "image/gif" };
-                if (!allowedTypes.Contains(file.ContentType.ToLower()))
-                {
-                    throw new ArgumentException("Invalid file type. Only JPG, PNG and GIF are allowed.");
-                }
+                await ValidateImageFile(file);
 
                 using var stream = file.OpenReadStream();
                 var uploadParams = new ImageUploadParams
                 {
                     File = new FileDescription(file.FileName, stream),
                     Folder = "products",
-                    // Add transformations if needed
                     Transformation = new Transformation()
                         .Quality("auto")
                         .FetchFormat("auto")
@@ -67,38 +55,67 @@ namespace E_commerce_pubg_api.WebApi.Services
 
                 if (uploadResult.Error != null)
                 {
-                    throw new Exception(uploadResult.Error.Message);
+                    _logger.LogError("Cloudinary upload failed: {ErrorMessage}", uploadResult.Error.Message);
+                    return new CloudinaryUploadResult
+                    {
+                        Success = false,
+                        Error = uploadResult.Error.Message
+                    };
                 }
 
-                _logger.LogInformation("Image uploaded successfully to Cloudinary. Public ID: {PublicId}", uploadResult.PublicId);
-                
-                // Return the secure URL of the uploaded image
-                return uploadResult.SecureUrl.ToString();
+                return new CloudinaryUploadResult
+                {
+                    Success = true,
+                    ImageUrl = uploadResult.SecureUrl.ToString(),
+                    PublicId = uploadResult.PublicId
+                };
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error uploading image to Cloudinary");
-                throw;
+                return new CloudinaryUploadResult
+                {
+                    Success = false,
+                    Error = ex.Message
+                };
             }
         }
 
-        public async Task DeleteImageAsync(string imageUrl)
+        public async Task<List<CloudinaryUploadResult>> UploadImagesAsync(List<IFormFile> files)
         {
-            if (string.IsNullOrEmpty(imageUrl))
+            if (files == null || !files.Any())
+            {
+                return new List<CloudinaryUploadResult>();
+            }
+
+            // Process uploads in parallel with limited concurrency
+            var semaphore = new SemaphoreSlim(MaxConcurrentUploads);
+            var tasks = files.Select(async file =>
+            {
+                await semaphore.WaitAsync();
+                try
+                {
+                    return await UploadImageAsync(file);
+                }
+                finally
+                {
+                    semaphore.Release();
+                }
+            });
+
+            var results = await Task.WhenAll(tasks);
+            return results.ToList();
+        }
+
+        public async Task DeleteImageAsync(string publicId)
+        {
+            if (string.IsNullOrEmpty(publicId))
             {
                 return;
             }
 
             try
             {
-                // Extract public ID from URL
-                var publicId = ExtractPublicIdFromUrl(imageUrl);
-                if (string.IsNullOrEmpty(publicId))
-                {
-                    _logger.LogWarning("Could not extract public ID from URL: {ImageUrl}", imageUrl);
-                    return;
-                }
-
                 var deleteParams = new DeletionParams(publicId);
                 var result = await _cloudinary.DestroyAsync(deleteParams);
 
@@ -111,34 +128,29 @@ namespace E_commerce_pubg_api.WebApi.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting image from Cloudinary. URL: {ImageUrl}", imageUrl);
+                _logger.LogError(ex, "Error deleting image from Cloudinary. Public ID: {PublicId}", publicId);
                 throw;
             }
         }
 
-        private string ExtractPublicIdFromUrl(string imageUrl)
+        private async Task ValidateImageFile(IFormFile file)
         {
-            try
+            if (file == null || file.Length == 0)
             {
-                // Example URL: https://res.cloudinary.com/your-cloud-name/image/upload/v1234567890/products/image.jpg
-                var uri = new Uri(imageUrl);
-                var pathSegments = uri.AbsolutePath.Split('/');
-                
-                // Find the 'upload' segment and get everything after it
-                var uploadIndex = Array.IndexOf(pathSegments, "upload");
-                if (uploadIndex >= 0 && uploadIndex < pathSegments.Length - 2)
-                {
-                    // Skip the version number (v1234567890) and combine the rest
-                    var publicId = string.Join("/", pathSegments.Skip(uploadIndex + 2));
-                    // Remove the file extension
-                    return Path.GetFileNameWithoutExtension(publicId);
-                }
+                throw new ArgumentException("File is empty");
             }
-            catch (Exception ex)
+
+            if (file.Length > MaxFileSizeInMB * 1024 * 1024)
             {
-                _logger.LogError(ex, "Error extracting public ID from URL: {ImageUrl}", imageUrl);
+                throw new ArgumentException($"File size exceeds {MaxFileSizeInMB}MB limit");
             }
-            return null;
+
+            if (!_allowedImageTypes.Contains(file.ContentType.ToLower()))
+            {
+                throw new ArgumentException($"File type {file.ContentType} is not allowed. Only JPG and PNG are supported.");
+            }
+
+            await Task.CompletedTask;
         }
     }
 }

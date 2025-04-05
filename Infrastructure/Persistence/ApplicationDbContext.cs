@@ -11,6 +11,7 @@ namespace E_commerce_pubg_api.Infrastructure.Persistence
         }
 
         public DbSet<Product> Products { get; set; }
+        public DbSet<ProductImage> ProductImages { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -21,8 +22,17 @@ namespace E_commerce_pubg_api.Infrastructure.Persistence
                 entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
                 entity.Property(e => e.Description).HasMaxLength(500);
                 entity.Property(e => e.Price).HasColumnType("decimal(18,2)");
-                entity.Property(e => e.ImageUrl).HasMaxLength(250);
                 entity.Property(e => e.Category).HasMaxLength(50);
+            });
+
+            modelBuilder.Entity<ProductImage>(entity =>
+            {
+                entity.Property(e => e.ImageUrl).IsRequired().HasMaxLength(250);
+                entity.Property(e => e.PublicId).IsRequired().HasMaxLength(100);
+                entity.HasOne(e => e.Product)
+                    .WithMany(p => p.Images)
+                    .HasForeignKey(e => e.ProductId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
         }
 

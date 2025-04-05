@@ -14,26 +14,22 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:80
       - ConnectionStrings__DefaultConnection=Host=db;Port=5432;Database=pubg_ecommerce;Username=postgres;Password=your_password;Maximum Pool Size=100;Minimum Pool Size=20
-      - Cloudinary__CloudName=your_cloud_name
-      - Cloudinary__ApiKey=your_api_key
-      - Cloudinary__ApiSecret=your_api_secret
+      - Cloudinary__CloudName=dmwfdkml6
+      - Cloudinary__ApiKey=565611315435648
+      - Cloudinary__ApiSecret=d7ywK9dRepHZ7qWy2rEEHH5ahzU
     deploy:
       resources:
         limits:
-          cpus: '1.5'
-          memory: 1G
-        reservations:
-          cpus: '0.5'
+          cpus: '1'
           memory: 512M
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
     restart: unless-stopped
     networks:
-      - app-network
+      - pubg-network
 
   db:
     image: postgres:14-alpine
@@ -41,19 +37,6 @@ services:
       - POSTGRES_DB=pubg_ecommerce
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=your_password
-      - POSTGRES_MAX_CONNECTIONS=200
-    command: >
-      postgres 
-      -c max_connections=200
-      -c shared_buffers=256MB
-      -c effective_cache_size=768MB
-      -c maintenance_work_mem=64MB
-      -c checkpoint_completion_target=0.9
-      -c wal_buffers=16MB
-      -c default_statistics_target=100
-      -c random_page_cost=1.1
-      -c effective_io_concurrency=200
-      -c work_mem=4MB
     ports:
       - "5432:5432"
     volumes:
@@ -63,21 +46,17 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 30s
     deploy:
       resources:
         limits:
           cpus: '1'
-          memory: 1G
-        reservations:
-          cpus: '0.5'
           memory: 512M
     restart: unless-stopped
     networks:
-      - app-network
+      - pubg-network
 
 networks:
-  app-network:
+  pubg-network:
     driver: bridge
 
 volumes:

@@ -11,7 +11,17 @@ builder.Services.AddControllers();
 
 // Configure PostgreSQL
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+{
+    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+    options.UseNpgsql(connectionString, npgsqlOptions =>
+    {
+        npgsqlOptions.EnableRetryOnFailure(
+            maxRetryCount: 5,
+            maxRetryDelay: TimeSpan.FromSeconds(5),
+            errorCodesToAdd: null);
+        npgsqlOptions.MigrationsAssembly(typeof(Program).Assembly.GetName().Name);
+    });
+});
 
 // Configure Cloudinary Service
 builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
@@ -32,11 +42,9 @@ builder.Services.AddSwaggerGen(c =>
         }
     });
 
-    // Set the comments path for the Swagger JSON and UI
     var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
     var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
     c.IncludeXmlComments(xmlPath);
-
     c.EnableAnnotations();
 });
 
@@ -55,43 +63,56 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Configure Swagger for all environments
+// Configure the HTTP request pipeline.
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "PUBG E-commerce API V1");
-    // Set Swagger UI at the root URL
-    c.RoutePrefix = "";
+    c.RoutePrefix = string.Empty;
     c.DocumentTitle = "PUBG E-commerce API Documentation";
-    c.DefaultModelsExpandDepth(2);
-    c.DefaultModelRendering(Swashbuckle.AspNetCore.SwaggerUI.ModelRendering.Model);
-    c.DocExpansion(Swashbuckle.AspNetCore.SwaggerUI.DocExpansion.None);
-    c.EnableDeepLinking();
-    c.DisplayRequestDuration();
 });
 
 app.UseHttpsRedirection();
 app.UseCors("AllowAll");
 app.UseAuthorization();
-
-// Serve static files (for uploaded images)
-app.UseStaticFiles();
-
 app.MapControllers();
 
-// Ensure database is created and apply migrations
+// Initialize Database
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
+    var logger = services.GetRequiredService<ILogger<Program>>();
+
     try
     {
         var context = services.GetRequiredService<ApplicationDbContext>();
-        context.Database.Migrate();
+        logger.LogInformation("Starting database migration at {time}", DateTimeOffset.Now);
+
+        // Create database if not exists
+        context.Database.EnsureCreated();
+        logger.LogInformation("Database created successfully");
+
+        // Apply migrations
+        var pendingMigrations = await context.Database.GetPendingMigrationsAsync();
+        if (pendingMigrations.Any())
+        {
+            logger.LogInformation("Found {count} pending migrations", pendingMigrations.Count());
+            foreach (var migration in pendingMigrations)
+            {
+                logger.LogInformation("Applying migration: {migration}", migration);
+            }
+            await context.Database.MigrateAsync();
+            logger.LogInformation("All migrations applied successfully");
+        }
+        else
+        {
+            logger.LogInformation("No pending migrations found");
+        }
     }
     catch (Exception ex)
     {
-        var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "An error occurred while migrating the database.");
+        logger.LogError(ex, "An error occurred while migrating the database");
+        throw; // Crash the app if database isn't available
     }
 }
 

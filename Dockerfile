@@ -1,23 +1,33 @@
+# Build stage
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 
-# Copy and restore dependencies
-COPY ["*.csproj", "./"]
-RUN dotnet restore
-
-# Copy the rest of the code and publish
+# Copy everything
 COPY . .
-RUN dotnet publish -c Release -o /app/publish
 
-# Build runtime image
+# Build and publish
+RUN dotnet restore && \
+    dotnet publish -c Release -o /app/publish
+
+# Runtime stage
 FROM mcr.microsoft.com/dotnet/aspnet:9.0
 WORKDIR /app
-COPY --from=build /app/publish .
 
-# Configure environment variables for performance
-ENV ASPNETCORE_URLS=http://+:80 \
-    COMPlus_ThreadPool_ForceMinWorkerThreads=100 \
-    COMPlus_ThreadPool_ForceMaxWorkerThreads=100
+# Install curl for healthcheck
+RUN apt-get update && \
+    apt-get install -y curl && \
+    rm -rf /var/lib/apt/lists/* && \
+    adduser --disabled-password --home /app --no-create-home --uid 1000 appuser && \
+    chown -R appuser:appuser /app
+
+# Copy published files
+COPY --from=build --chown=appuser:appuser /app/publish .
+
+# Set environment variables
+ENV ASPNETCORE_URLS=http://+:80
+
+# Switch to non-root user
+USER appuser
 
 EXPOSE 80
 
