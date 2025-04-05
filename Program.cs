@@ -5,6 +5,7 @@ using FluentValidation;
 using FluentValidation.AspNetCore;
 using E_commerce_pubg_api.Infrastructure.Persistence;
 using E_commerce_pubg_api.Application.Interfaces;
+using E_commerce_pubg_api.Application.Services;
 using E_commerce_pubg_api.Application.Validators;
 using E_commerce_pubg_api.Infrastructure.ExternalServices.Cloudinary;
 
@@ -33,8 +34,10 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     });
 });
 
-// Configure Cloudinary Service
+// Configure Services
 builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
+builder.Services.AddScoped<ICategoryService, CategoryService>();
+builder.Services.AddScoped<IProductService, ProductService>();
 
 // Configure Swagger/OpenAPI
 builder.Services.AddEndpointsApiExplorer();
