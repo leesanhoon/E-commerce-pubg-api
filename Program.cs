@@ -17,6 +17,7 @@ builder.Services.AddControllers();
 builder.Services.AddValidatorsFromAssemblyContaining<CreateCategoryDtoValidator>();
 builder.Services.AddScoped<CreateCategoryDtoValidator>();
 builder.Services.AddScoped<UpdateCategoryDtoValidator>();
+builder.Services.AddScoped<CreateProductDtoValidator>();
 
 // Configure PostgreSQL
 builder.Services.AddDbContext<ApplicationDbContext>(options =>

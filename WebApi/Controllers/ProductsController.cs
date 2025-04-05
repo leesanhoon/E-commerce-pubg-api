@@ -5,6 +5,7 @@ using E_commerce_pubg_api.Domain.Entities;
 using E_commerce_pubg_api.Infrastructure.Persistence;
 using E_commerce_pubg_api.Application.DTOs;
 using E_commerce_pubg_api.Application.Interfaces;
+using E_commerce_pubg_api.Application.Validators;
 using System.Transactions;
 
 namespace E_commerce_pubg_api.WebApi.Controllers
@@ -17,15 +18,18 @@ namespace E_commerce_pubg_api.WebApi.Controllers
         private readonly ApplicationDbContext _context;
         private readonly ICloudinaryService _cloudinaryService;
         private readonly ILogger<ProductsController> _logger;
+        private readonly CreateProductDtoValidator _validator;
 
         public ProductsController(
             ApplicationDbContext context,
             ICloudinaryService cloudinaryService,
-            ILogger<ProductsController> logger)
+            ILogger<ProductsController> logger,
+            CreateProductDtoValidator validator)
         {
             _context = context;
             _cloudinaryService = cloudinaryService;
             _logger = logger;
+            _validator = validator;
         }
 
         /// <summary>
@@ -45,6 +49,29 @@ namespace E_commerce_pubg_api.WebApi.Controllers
         {
             try
             {
+                var validationResult = await _validator.ValidateAsync(createProductDto);
+                if (!validationResult.IsValid)
+                {
+                    return BadRequest(new ErrorResponse
+                    {
+                        Success = false,
+                        Message = "Dữ liệu không hợp lệ",
+                        Error = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage))
+                    });
+                }
+
+                // Get category
+                var category = await _context.Categories.FindAsync(createProductDto.CategoryId);
+                if (category == null)
+                {
+                    return BadRequest(new ErrorResponse
+                    {
+                        Success = false,
+                        Message = "Dữ liệu không hợp lệ",
+                        Error = "Danh mục không tồn tại"
+                    });
+                }
+
                 var product = new Product
                 {
                     Id = Guid.NewGuid(),
@@ -52,7 +79,8 @@ namespace E_commerce_pubg_api.WebApi.Controllers
                     Description = createProductDto.Description,
                     Price = createProductDto.Price,
                     StockQuantity = createProductDto.StockQuantity,
-                    Category = createProductDto.Category,
+                    CategoryId = createProductDto.CategoryId,
+                    Category = category,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 };
@@ -96,7 +124,13 @@ namespace E_commerce_pubg_api.WebApi.Controllers
                     Description = product.Description,
                     Price = product.Price,
                     StockQuantity = product.StockQuantity,
-                    Category = product.Category,
+                    CategoryId = product.CategoryId,
+                    Category = new CategoryDTO
+                    {
+                        Id = category.Id,
+                        Name = category.Name,
+                        Description = category.Description
+                    },
                     Images = product.Images?.Select(i => new ProductImageDto
                     {
                         Id = i.Id,
@@ -140,6 +174,7 @@ namespace E_commerce_pubg_api.WebApi.Controllers
                 _logger.LogInformation("Fetching all products");
                 var products = await _context.Products
                     .Include(p => p.Images)
+                    .Include(p => p.Category)
                     .OrderByDescending(p => p.CreatedAt)
                     .ToListAsync();
 
@@ -150,7 +185,13 @@ namespace E_commerce_pubg_api.WebApi.Controllers
                     Description = p.Description,
                     Price = p.Price,
                     StockQuantity = p.StockQuantity,
-                    Category = p.Category,
+                    CategoryId = p.CategoryId,
+                    Category = new CategoryDTO
+                    {
+                        Id = p.Category.Id,
+                        Name = p.Category.Name,
+                        Description = p.Category.Description
+                    },
                     Images = p.Images?.Select(i => new ProductImageDto
                     {
                         Id = i.Id,
@@ -199,6 +240,7 @@ namespace E_commerce_pubg_api.WebApi.Controllers
             {
                 var product = await _context.Products
                     .Include(p => p.Images)
+                    .Include(p => p.Category)
                     .FirstOrDefaultAsync(p => p.Id == id);
 
                 if (product == null)
@@ -217,7 +259,13 @@ namespace E_commerce_pubg_api.WebApi.Controllers
                     Description = product.Description,
                     Price = product.Price,
                     StockQuantity = product.StockQuantity,
-                    Category = product.Category,
+                    CategoryId = product.CategoryId,
+                    Category = new CategoryDTO
+                    {
+                        Id = product.Category.Id,
+                        Name = product.Category.Name,
+                        Description = product.Category.Description
+                    },
                     Images = product.Images?.Select(i => new ProductImageDto
                     {
                         Id = i.Id,

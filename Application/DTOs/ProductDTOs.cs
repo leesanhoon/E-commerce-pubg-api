@@ -8,7 +8,7 @@ namespace E_commerce_pubg_api.Application.DTOs
         public string Description { get; set; } = string.Empty;
         public decimal Price { get; set; }
         public int StockQuantity { get; set; }
-        public string Category { get; set; } = string.Empty;
+        public int CategoryId { get; set; }
         public List<IFormFile>? Images { get; set; }
     }
 
@@ -19,7 +19,8 @@ namespace E_commerce_pubg_api.Application.DTOs
         public string Description { get; set; } = string.Empty;
         public decimal Price { get; set; }
         public int StockQuantity { get; set; }
-        public string Category { get; set; } = string.Empty;
+        public int CategoryId { get; set; }
+        public CategoryDTO Category { get; set; }
         public List<ProductImageDto>? Images { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
