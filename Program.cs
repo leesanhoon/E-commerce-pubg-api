@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using System.Reflection;
 using E_commerce_pubg_api.Infrastructure.Persistence;
+using E_commerce_pubg_api.WebApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,6 +12,9 @@ builder.Services.AddControllers();
 // Configure PostgreSQL
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Configure Cloudinary Service
+builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
 
 // Configure Swagger/OpenAPI
 builder.Services.AddEndpointsApiExplorer();
@@ -51,16 +55,13 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Always enable Swagger
-app.UseSwagger(c =>
-{
-    c.SerializeAsV2 = false;
-});
-
+// Configure Swagger for all environments
+app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "PUBG E-commerce API V1");
-    c.RoutePrefix = string.Empty;
+    // Set Swagger UI at the root URL
+    c.RoutePrefix = "";
     c.DocumentTitle = "PUBG E-commerce API Documentation";
     c.DefaultModelsExpandDepth(2);
     c.DefaultModelRendering(Swashbuckle.AspNetCore.SwaggerUI.ModelRendering.Model);
@@ -72,6 +73,10 @@ app.UseSwaggerUI(c =>
 app.UseHttpsRedirection();
 app.UseCors("AllowAll");
 app.UseAuthorization();
+
+// Serve static files (for uploaded images)
+app.UseStaticFiles();
+
 app.MapControllers();
 
 // Ensure database is created and apply migrations

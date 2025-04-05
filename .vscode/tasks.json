@@ -1,0 +1,95 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "build",
+                "${workspaceFolder}/E-commerce-pubg-api.csproj",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary"
+            ],
+            "problemMatcher": "$msCompile",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "publish",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "publish",
+                "${workspaceFolder}/E-commerce-pubg-api.csproj",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary"
+            ],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "watch",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "watch",
+                "run",
+                "--project",
+                "${workspaceFolder}/E-commerce-pubg-api.csproj"
+            ],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "docker-compose-up-database",
+            "type": "shell",
+            "command": "docker-compose up -d db",
+            "problemMatcher": []
+        },
+        {
+            "label": "docker-build",
+            "type": "docker-build",
+            "platform": "netcore",
+            "dockerBuild": {
+                "tag": "ecommercepubgapi:dev",
+                "target": "base",
+                "dockerfile": "${workspaceFolder}/Dockerfile",
+                "context": "${workspaceFolder}",
+                "pull": true
+            },
+            "netCore": {
+                "appProject": "${workspaceFolder}/E-commerce-pubg-api.csproj"
+            }
+        },
+        {
+            "label": "docker-run: debug",
+            "type": "docker-run",
+            "dependsOn": [
+                "docker-build"
+            ],
+            "dockerRun": {
+                "env": {
+                    "ASPNETCORE_ENVIRONMENT": "Development"
+                },
+                "ports": [
+                    {
+                        "hostPort": 5000,
+                        "containerPort": 80
+                    }
+                ],
+                "volumes": [
+                    {
+                        "localPath": "${workspaceFolder}",
+                        "containerPath": "/app",
+                        "bind": "bind"
+                    }
+                ]
+            },
+            "netCore": {
+                "appProject": "${workspaceFolder}/E-commerce-pubg-api.csproj",
+                "enableDebugging": true
+            }
+        }
+    ]
+}

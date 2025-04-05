@@ -11,8 +11,12 @@ services:
       db:
         condition: service_healthy
     environment:
-      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
       - ConnectionStrings__DefaultConnection=Host=db;Port=5432;Database=pubg_ecommerce;Username=postgres;Password=your_password;Maximum Pool Size=100;Minimum Pool Size=20
+      - Cloudinary__CloudName=your_cloud_name
+      - Cloudinary__ApiKey=your_api_key
+      - Cloudinary__ApiSecret=your_api_secret
     deploy:
       resources:
         limits:
@@ -22,7 +26,7 @@ services:
           cpus: '0.5'
           memory: 512M
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -54,7 +58,6 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init-scripts:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s

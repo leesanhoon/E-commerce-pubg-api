@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Swashbuckle.AspNetCore.Annotations;
 using E_commerce_pubg_api.Domain.Entities;
 using E_commerce_pubg_api.Infrastructure.Persistence;
+using E_commerce_pubg_api.WebApi.Services;
 
 namespace E_commerce_pubg_api.WebApi.Controllers
 {
@@ -12,20 +13,22 @@ namespace E_commerce_pubg_api.WebApi.Controllers
     public class ProductsController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
+        private readonly ICloudinaryService _cloudinaryService;
         private readonly ILogger<ProductsController> _logger;
 
-        public ProductsController(ApplicationDbContext context, ILogger<ProductsController> logger)
+        public ProductsController(
+            ApplicationDbContext context,
+            ICloudinaryService cloudinaryService,
+            ILogger<ProductsController> logger)
         {
             _context = context;
+            _cloudinaryService = cloudinaryService;
             _logger = logger;
         }
 
         /// <summary>
         /// Lấy danh sách tất cả sản phẩm
         /// </summary>
-        /// <returns>Danh sách sản phẩm</returns>
-        /// <response code="200">Trả về danh sách sản phẩm</response>
-        /// <response code="500">Lỗi server khi xử lý yêu cầu</response>
         [HttpGet]
         [SwaggerOperation(
             Summary = "Lấy danh sách tất cả sản phẩm",
@@ -64,13 +67,86 @@ namespace E_commerce_pubg_api.WebApi.Controllers
         }
 
         /// <summary>
+        /// Upload ảnh cho sản phẩm
+        /// </summary>
+        [HttpPost("{id}/upload-image")]
+        [SwaggerOperation(
+            Summary = "Upload ảnh cho sản phẩm",
+            Description = "Upload và cập nhật ảnh cho sản phẩm lên Cloudinary. Hỗ trợ định dạng: jpg, jpeg, png, gif. Kích thước tối đa: 5MB",
+            OperationId = "UploadProductImage",
+            Tags = new[] { "Products" }
+        )]
+        [ProducesResponseType(typeof(ProductResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> UploadImage(Guid id, IFormFile file)
+        {
+            try
+            {
+                var product = await _context.Products.FindAsync(id);
+                if (product == null)
+                {
+                    return NotFound(new ErrorResponse
+                    {
+                        Success = false,
+                        Message = "Product not found"
+                    });
+                }
+
+                if (file == null || file.Length == 0)
+                {
+                    return BadRequest(new ErrorResponse
+                    {
+                        Success = false,
+                        Message = "No file was uploaded"
+                    });
+                }
+
+                // Delete old image if exists
+                if (!string.IsNullOrEmpty(product.ImageUrl))
+                {
+                    await _cloudinaryService.DeleteImageAsync(product.ImageUrl);
+                }
+
+                // Upload new image to Cloudinary
+                var imageUrl = await _cloudinaryService.UploadImageAsync(file);
+                
+                // Update product with new image URL
+                product.ImageUrl = imageUrl;
+                product.UpdatedAt = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
+
+                return Ok(new ProductResponse
+                {
+                    Success = true,
+                    Data = product
+                });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new ErrorResponse
+                {
+                    Success = false,
+                    Message = ex.Message
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while uploading image for product {ProductId}", id);
+                return StatusCode(500, new ErrorResponse
+                {
+                    Success = false,
+                    Message = "An error occurred while uploading the image",
+                    Error = ex.Message
+                });
+            }
+        }
+
+        /// <summary>
         /// Lấy thông tin chi tiết của một sản phẩm
         /// </summary>
-        /// <param name="id">ID của sản phẩm</param>
-        /// <returns>Thông tin chi tiết sản phẩm</returns>
-        /// <response code="200">Trả về thông tin sản phẩm</response>
-        /// <response code="404">Không tìm thấy sản phẩm</response>
-        /// <response code="500">Lỗi server khi xử lý yêu cầu</response>
         [HttpGet("{id}")]
         [SwaggerOperation(
             Summary = "Lấy thông tin chi tiết sản phẩm",
