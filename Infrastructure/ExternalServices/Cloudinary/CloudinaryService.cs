@@ -1,20 +1,16 @@
 using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
 using Microsoft.AspNetCore.Http;
-using E_commerce_pubg_api.WebApi.DTOs;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using E_commerce_pubg_api.Application.DTOs;
+using E_commerce_pubg_api.Application.Interfaces;
 
-namespace E_commerce_pubg_api.WebApi.Services
+namespace E_commerce_pubg_api.Infrastructure.ExternalServices.Cloudinary
 {
-    public interface ICloudinaryService
-    {
-        Task<CloudinaryUploadResult> UploadImageAsync(IFormFile file);
-        Task<List<CloudinaryUploadResult>> UploadImagesAsync(List<IFormFile> files);
-        Task DeleteImageAsync(string publicId);
-    }
-
     public class CloudinaryService : ICloudinaryService
     {
-        private readonly Cloudinary _cloudinary;
+        private readonly CloudinaryDotNet.Cloudinary _cloudinary;
         private readonly ILogger<CloudinaryService> _logger;
         private readonly string[] _allowedImageTypes = { "image/jpeg", "image/jpg", "image/png" };
         private const int MaxFileSizeInMB = 5;
@@ -31,7 +27,7 @@ namespace E_commerce_pubg_api.WebApi.Services
                 throw new ArgumentException("Cloudinary configuration is missing");
             }
 
-            _cloudinary = new Cloudinary(new Account(cloudName, apiKey, apiSecret));
+            _cloudinary = new CloudinaryDotNet.Cloudinary(new Account(cloudName, apiKey, apiSecret));
             _logger = logger;
         }
 

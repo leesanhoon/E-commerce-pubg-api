@@ -22,30 +22,61 @@ API backend cho hệ thống thương mại điện tử chuyên về mua bán c
 - **Swagger/OpenAPI**: API documentation
 - **VS Code**: IDE chính để phát triển
 
-## 📂 Cấu trúc thư mục
+## 📂 Cấu trúc thư mục (Clean Architecture)
 ```
 E-commerce-pubg-api/
-├── Domain/                # Business entities và logic
-│   ├── Entities/         # Domain models
-│   ├── Enums/           # Enumerations
-│   └── Exceptions/      # Custom exceptions
+├── Domain/                      # Enterprise Business Rules
+│   ├── Entities/               # Business entities
+│   ├── Enums/                 # Enumerations
+│   └── Exceptions/            # Domain exceptions
 │
-├── Infrastructure/        # Data access và external services
-│   ├── Persistence/     # Database related
-│   │   ├── Contexts/   
+├── Application/                 # Application Business Rules
+│   ├── Interfaces/            # Service interfaces
+│   ├── Services/              # Application services
+│   ├── DTOs/                 # Data transfer objects
+│   └── Validators/           # Request validators
+│
+├── Infrastructure/              # Frameworks & Drivers
+│   ├── Persistence/           # Database implementation
+│   │   ├── Contexts/
 │   │   ├── Repositories/
 │   │   └── Migrations/
-│   └── ExternalServices/ # Third-party integrations
+│   └── ExternalServices/      # External service implementations
+│       └── Cloudinary/       # Cloudinary integration
 │
-├── WebApi/               # API endpoints và presentation
-│   ├── Controllers/     # API controllers
-│   ├── Services/        # Application services
-│   └── Middleware/      # Custom middleware
+├── WebApi/                     # Interface Adapters
+│   ├── Controllers/           # API controllers
+│   └── Middleware/            # Custom middleware
 │
-├── .vscode/             # VS Code configuration
-├── docker/              # Docker configuration
-└── tests/               # Unit và integration tests
+├── .vscode/                   # VS Code configuration
+├── docker/                    # Docker configuration
+└── tests/                     # Unit và integration tests
 ```
+
+## 🏗️ Clean Architecture
+
+Dự án được tổ chức theo nguyên tắc Clean Architecture với 4 layer chính:
+
+1. **Domain Layer** (Innermost)
+   - Chứa business entities và business rules
+   - Không phụ thuộc vào bất kỳ layer nào khác
+   - Không phụ thuộc vào frameworks hay thư viện bên ngoài
+
+2. **Application Layer**
+   - Chứa business logic và orchestration
+   - Định nghĩa interfaces cho các services
+   - Chứa DTOs và validators
+   - Phụ thuộc vào Domain layer
+
+3. **Infrastructure Layer**
+   - Implement các interfaces từ Application layer
+   - Chứa implementations cho database và external services
+   - Phụ thuộc vào Application và Domain layer
+
+4. **Web API Layer** (Outermost)
+   - Controllers và Middleware
+   - Presentation logic
+   - Phụ thuộc vào Application layer
 
 ## 🚀 Hướng dẫn cài đặt chi tiết
 

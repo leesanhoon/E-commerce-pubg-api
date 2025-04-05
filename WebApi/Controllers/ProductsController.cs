@@ -3,8 +3,8 @@ using Microsoft.EntityFrameworkCore;
 using Swashbuckle.AspNetCore.Annotations;
 using E_commerce_pubg_api.Domain.Entities;
 using E_commerce_pubg_api.Infrastructure.Persistence;
-using E_commerce_pubg_api.WebApi.Services;
-using E_commerce_pubg_api.WebApi.DTOs;
+using E_commerce_pubg_api.Application.DTOs;
+using E_commerce_pubg_api.Application.Interfaces;
 using System.Transactions;
 
 namespace E_commerce_pubg_api.WebApi.Controllers

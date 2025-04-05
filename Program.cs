@@ -2,7 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using System.Reflection;
 using E_commerce_pubg_api.Infrastructure.Persistence;
-using E_commerce_pubg_api.WebApi.Services;
+using E_commerce_pubg_api.Application.Interfaces;
+using E_commerce_pubg_api.Infrastructure.ExternalServices.Cloudinary;
 
 var builder = WebApplication.CreateBuilder(args);
 
