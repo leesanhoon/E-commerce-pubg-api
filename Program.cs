@@ -68,9 +68,10 @@ builder.Services.AddCors(options =>
         builder =>
         {
             builder
-                .AllowAnyOrigin()
+                .SetIsOriginAllowed(_ => true)
                 .AllowAnyMethod()
-                .AllowAnyHeader();
+                .AllowAnyHeader()
+                .AllowCredentials();
         });
 });
 
@@ -85,8 +86,8 @@ app.UseSwaggerUI(c =>
     c.DocumentTitle = "PUBG E-commerce API Documentation";
 });
 
+app.UseCors("AllowAll"); // Di chuyển CORS trước UseHttpsRedirection
 app.UseHttpsRedirection();
-app.UseCors("AllowAll");
 app.UseAuthorization();
 app.MapControllers();
 
@@ -95,36 +96,31 @@ using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
     var logger = services.GetRequiredService<ILogger<Program>>();
+    var context = services.GetRequiredService<ApplicationDbContext>();
 
     try
     {
-        var context = services.GetRequiredService<ApplicationDbContext>();
-        logger.LogInformation("Starting database migration at {Time}", DateTimeOffset.Now);
-
-        // Create database if not exists
-        context.Database.EnsureCreated();
-        logger.LogInformation("Database created successfully");
-
-        // Apply migrations
-        var pendingMigrations = await context.Database.GetPendingMigrationsAsync();
-        if (pendingMigrations.Any())
+        logger.LogInformation("Starting database initialization at {Time}", DateTimeOffset.Now);
+        
+        // Attempt to connect to database
+        if (await context.Database.CanConnectAsync())
         {
-            logger.LogInformation("Found {Count} pending migrations", pendingMigrations.Count());
-            foreach (var migration in pendingMigrations)
-            {
-                logger.LogInformation("Applying migration: {Migration}", migration);
-            }
+            logger.LogInformation("Successfully connected to database");
+            
+            // Apply any pending migrations
             await context.Database.MigrateAsync();
-            logger.LogInformation("All migrations applied successfully");
+            logger.LogInformation("Database migrations completed successfully");
         }
         else
         {
-            logger.LogInformation("No pending migrations found");
+            logger.LogInformation("Could not connect to database. Creating new database...");
+            await context.Database.MigrateAsync();
+            logger.LogInformation("Database created and migrations applied successfully");
         }
     }
     catch (Exception ex)
     {
-        logger.LogError(ex, "An error occurred while migrating the database");
+        logger.LogError(ex, "An error occurred while setting up the database");
         throw; // Crash the app if database isn't available
     }
 }
